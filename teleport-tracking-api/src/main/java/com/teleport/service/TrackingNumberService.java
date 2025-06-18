@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.OffsetDateTime;
 import java.util.Random;
@@ -27,12 +28,10 @@ public class TrackingNumberService {
                                                    UUID customerId, String customerName, String customerSlug) {
         String trackingNumber;
         TrackingNumber entity = null;
-        do {
-            trackingNumber = generateRandomTrackingNumber();
-        } while (repository.existsByTrackingNumber(trackingNumber));
 
         while (entity == null) {
             trackingNumber = generateRandomTrackingNumber();
+            try {
              entity = repository.save(TrackingNumber.builder()
                     .tracking_number(trackingNumber)
                     .created_at(createdAt)
@@ -43,6 +42,10 @@ public class TrackingNumberService {
                     .customer_name(customerName)
                     .customer_slug(customerSlug)
                     .build());
+            } catch (DataIntegrityViolationException e) {
+                // Duplicate key violation, retry
+                logger.warn("Duplicate tracking number generated, retrying...");
+            }
         }
 
 
